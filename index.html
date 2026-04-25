@@ -852,147 +852,49 @@ async function testConnection(){
     if(res && res.status === 'ok'){
       el.textContent = '✓ ' + res.message;
       el.style.color = 'var(--green)';
-      setGSStatus('ready', '✓ Connected to Google Sheets');
-      showToast('Google Sheets connected! ✓');
-      gsConnected = true;
-      loadFromSheets();
-    } else {
+   } else {
       throw new Error(res?.message || 'Unexpected response');
     }
-  } catch(e) {
-    // Check if it's a CORS error specifically
-    const isCORS = e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('CORS');
-    const hint = isCORS
-      ? 'CORS error — make sure the script is deployed as "Anyone" and you redeployed after the last code change.'
-      : e.message;
+  } catch (e) {
+    const isCORS = e.message.includes('Failed to fetch') || e.message.includes('CORS');
+    const hint = isCORS ? 'CORS error — redeploy Apps Script as "Anyone"' : e.message;
     el.textContent = '✗ ' + hint;
     el.style.color = 'var(--red)';
     setGSStatus('error', 'Connection failed');
-    showToast('Connection failed — check Setup tab', 'error');
-    console.error('[AttendIQ] GAS error:', e);
+    showToast('Connection failed', 'error');
   }
 }
 
-async function loadFromSheets(){
-  setSyncBadge('syncing', 'Syncing…');
+async function loadFromSheets() {
+  setSyncBadge('syncing', 'Syncing...');
   try {
-    const res = await gasCall({ action:'getAll' });
-    if(!res || res.status !== 'ok') throw new Error(res?.message || 'Bad response');
+    const res = await gasCall({ action: 'getAll' });
+    if (!res || res.status !== 'ok') throw new Error(res?.message || 'Bad response');
 
     employees = (res.employees || []).map(r => ({
-      id:        r.ID          || r.id,
-      name:      r.Name        || r.name,
-      email:     r.Email       || r.email,
-      dept:      r.Department  || r.dept,
-      role:      r.Role        || r.role,
-      color:     r.Color       || r.color       || EMP_COLORS[0],
-      createdAt: r.CreatedAt   || r.createdAt,
+      id: r.ID || r.id,
+      name: r.Name || r.name,
+      email: r.Email || r.email,
+      dept: r.Department || r.dept,
+      role: r.Role || r.role,
+      color: r.Color || r.color || EMP_COLORS[0],
+      createdAt: r.CreatedAt || r.createdAt
     })).filter(e => e.id);
 
-    logs = (res.attendance || []).map(r => ({
-      id:        r.ID        || r.id,
-      empId:     r.EmpID     || r.empId,
-      type:      (r.Type     || r.type || '').toLowerCase(),
-      ts:        r.Timestamp || r.ts,
-      pairedOut: null,
-      method:    r.Method    || r.method || 'face',
-      loc: {
-        city: r.City      || r.city || '',
-        lat:  parseFloat(r.Latitude  || r.lat)  || 0,
-        lng:  parseFloat(r.Longitude || r.lng)  || 0,
-      }
-    })).filter(l => l.id && l.empId);
-
-    pairSessions();
-    rebuildMatcher();
-    setSyncBadge('synced', `✓ Synced`);
-    setGSStatus('ready', `✓ ${employees.length} employees · ${logs.length} logs`);
-    gsConnected = true;
-    renderDashboard();
-    if(document.getElementById('page-employees').classList.contains('active')) renderEmployees();
-    if(document.getElementById('page-logs').classList.contains('active'))      renderLogs();
-    if(document.getElementById('page-scan').classList.contains('active'))      renderScanEmpList();
-    showToast(`Synced: ${employees.length} employees, ${logs.length} records`, 'info');
-  } catch(e) {
+    renderEmployeeList();
+    setSyncBadge('ready', 'Synced');
+  } catch (e) {
+    console.error("Load error:", e);
     setSyncBadge('error', 'Sync failed');
-    setGSStatus('error', 'Sync error — check Setup tab');
-    showToast('Sync failed: ' + e.message, 'error');
-    console.error('[AttendIQ] Sync error:', e);
   }
-}
-
-function pairSessions(){
-  // Pair in/out entries
-  const paired=new Set();
-  for(const l of logs){
-    if(l.type==='out'&&!paired.has(l.id)){
-      const session=logs.find(x=>x.empId===l.empId&&x.type==='in'&&!x.pairedOut&&new Date(x.ts)<new Date(l.ts));
-      if(session){session.pairedOut=l.id;l.pairedIn=session.id;}
-      paired.add(l.id);
-    }
-  }
-}
-
-function setGSStatus(state, msg){
-  document.getElementById('gs-status-txt').textContent=msg;
-  const dot=document.getElementById('gs-dot');
-  dot.className='dot '+(state==='loading'?'dot-loading':state==='ready'?'dot-ready':'dot-error');
-}
-
-// ════════════════════════════════════════════════════
-//  FACE-API MODELS
-// ════════════════════════════════════════════════════
-async function loadModels(){
-  try{
-    setModelStatus('loading','Loading AI face models…');
-    await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
-      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODELS_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URL),
-    ]);
-    modelsReady=true;
-    setModelStatus('ready','✓ Face recognition ready');
-    rebuildMatcher();
-  }catch(e){
-    setModelStatus('error','✗ Model load failed — check connection');
-    showToast('Face models failed to load','error');
-  }
-}
-function setModelStatus(s,m){
-  document.getElementById('model-text').textContent=m;
-  document.getElementById('model-dot').className='dot '+(s==='loading'?'dot-loading':s==='ready'?'dot-ready':'dot-error');
-}
-
-// ════════════════════════════════════════════════════
-//  FACE DATA (localStorage — face vectors are too large for Sheets)
-// ════════════════════════════════════════════════════
-function saveFaceData(){
-  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(faceData)); }catch(e){}
-}
-function loadFaceData(){
-  try{ faceData=JSON.parse(localStorage.getItem(LOCAL_KEY)||'{}'); }catch(e){ faceData={}; }
-}
-function rebuildMatcher(){
-  loadFaceData();
-  const labeled = employees
-    .filter(e=>faceData[e.id]?.descriptors?.length>0)
-    .map(e=>new faceapi.LabeledFaceDescriptors(
-      e.id, faceData[e.id].descriptors.map(d=>new Float32Array(d))
-    ));
-  faceMatcher = labeled.length ? new faceapi.FaceMatcher(labeled, THRESHOLD) : null;
-}
-function faceImgFor(emp){
-  return faceData[emp?.id]?.images?.[0]||null;
 }
 
 // ════════════════════════════════════════════════════
 //  NAV
+
 // ════════════════════════════════════════════════════
-const PAGE_TITLES={
-  dashboard:'Overview', scan:'Face Scanner', employees:'Employees',
-  add:'Register Employee', logs:'Attendance Log', export:'Export Data',
-  setup:'Google Sheets Setup'
-};
+//  NAV
+const PAGE_TITLES = {
 function showPage(name,btn){
   if(document.getElementById('page-scan')?.classList.contains('active')&&name!=='scan') stopScanCam();
   if(document.getElementById('page-add')?.classList.contains('active')&&name!=='add')   stopRegCam();
