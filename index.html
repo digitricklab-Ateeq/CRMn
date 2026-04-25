@@ -893,14 +893,28 @@ async function loadFromSheets() {
 //  NAV
 
 // ════════════════════════════════════════════════════
-// ════════════════════════════════════════════════════
-//  NAV
-// ════════════════════════════════════════════════════
 const PAGE_TITLES = {
   'dashboard': 'Overview',
   'scan': 'Face Scanner',
   'employees': 'Employee Directory',
   'add': 'Registration',
+  'logs': 'Attendance Log',
+  'export': 'Data Export',
+  'setup': 'System Settings'
+};
+
+function showPage(name, btn) {
+  const pages = ['dashboard','scan','employees','add','logs','export','setup'];
+  pages.forEach(p => document.getElementById('page-' + p).classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+
+  const navs = document.querySelectorAll('.nav-item');
+  navs.forEach(b => {
+    b.classList.remove('active');
+    if(b.getAttribute('onclick')?.includes(`'${name}'`)) b.classList.add('active');
+  });
+
+  document.getElementById('page-title').textContent = PAGE_TITLES[name] || '';
   'logs': 'Attendance Log',
   'export': 'Data Export',
   'setup': 'System Settings'
