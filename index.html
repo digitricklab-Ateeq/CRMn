@@ -893,16 +893,20 @@ async function loadFromSheets() {
 //  NAV
 
 // ════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
 //  NAV
+// ════════════════════════════════════════════════════
 const PAGE_TITLES = {
-function showPage(name,btn){
-  if(document.getElementById('page-scan')?.classList.contains('active')&&name!=='scan') stopScanCam();
-  if(document.getElementById('page-add')?.classList.contains('active')&&name!=='add')   stopRegCam();
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  else document.querySelectorAll('.nav-item').forEach(b=>{
+  'dashboard': 'Overview',
+  'scan': 'Face Scanner',
+  'employees': 'Employee Directory',
+  'add': 'Registration',
+  'logs': 'Attendance Log',
+  'export': 'Data Export',
+  'setup': 'System Settings'
+};
+
+function showPage(name, btn) {
     if(b.getAttribute('onclick')?.includes(`'${name}'`)) b.classList.add('active');
   });
   document.getElementById('page-title').textContent=PAGE_TITLES[name]||'';
