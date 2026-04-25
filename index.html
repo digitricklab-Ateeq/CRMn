@@ -885,7 +885,7 @@ async function loadFromSheets() {
     setSyncBadge('ready', 'Synced');
   } catch (e) {
     console.error("Load error:", e);
-    setSyncBadge('error', 'Sync failed');
+setSyncBadge('error', 'Sync failed');
   }
 }
 
@@ -915,20 +915,11 @@ function showPage(name, btn) {
   });
 
   document.getElementById('page-title').textContent = PAGE_TITLES[name] || '';
-  'logs': 'Attendance Log',
-  'export': 'Data Export',
-  'setup': 'System Settings'
-};
-
-function showPage(name, btn) {
-    if(b.getAttribute('onclick')?.includes(`'${name}'`)) b.classList.add('active');
-  });
-  document.getElementById('page-title').textContent=PAGE_TITLES[name]||'';
-  if(name==='dashboard')  renderDashboard();
-  if(name==='employees')  renderEmployees();
-  if(name==='scan')       renderScanEmpList();
-  if(name==='logs')       renderLogs();
-  if(name==='add')        resetAddForm();
+  if(name==='dashboard') renderDashboard();
+  if(name==='employees') renderEmployees();
+  if(name==='scan')      renderScanEmpList();
+  if(name==='logs')      renderLogs();
+  if(name==='add')       resetAddForm();
 }
 
 // ════════════════════════════════════════════════════
