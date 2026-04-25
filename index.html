@@ -604,7 +604,7 @@ const SS = SpreadsheetApp.getActiveSpreadsheet();
 
 // ── Main entry point ─────────────────────────────────────────────
 function doGet(e) {
-  const p      = e.parameter || {};
+    const p = (e && e.parameter) ? e.parameter : {};
   const action = p.action || '';
 
   let result;
